@@ -124,46 +124,49 @@ create_tables()
 if "customer" not in st.session_state:
     st.session_state.customer = None
 
-st.title("Home Service Booking")
-st.caption("Book mobile and home appliance services with a simple Streamlit UI")
+st.markdown(
+    "<h1 style='text-align: center; color: #1E40AF; font-weight: 700;'>SERVICE MANAGEMENT SYSTEM</h1>",
+    unsafe_allow_html=True,
+)
 
 if st.session_state.customer is None:
     st.subheader("Register or Login")
-    tab1, tab2 = st.tabs(["Register", "Login"])
+    st.write("")
 
-    with tab1:
-        with st.form("register_form"):
-            name = st.text_input("Name")
-            email = st.text_input("Email")
-            password = st.text_input("Password", type="password")
-            address = st.text_area("Address")
-            contact = st.text_input("Contact Number")
-            submitted = st.form_submit_button("Register")
+    st.write("Register")
+    with st.form("register_form"):
+        name = st.text_input("Name")
+        email = st.text_input("Email")
+        password = st.text_input("Password")
+        address = st.text_area("Address")
+        contact = st.text_input("Contact Number")
+        submitted = st.form_submit_button("Register")
 
-            if submitted:
-                if not all([name, email, password, address, contact]):
-                    st.warning("Please fill in all fields")
+        if submitted:
+            if not all([name, email, password, address, contact]):
+                st.warning("Please fill in all fields")
+            else:
+                success, result = register_customer(name, email, password, address, contact)
+                if success:
+                    st.success(f"Registration successful! Your User ID is {result}")
                 else:
-                    success, result = register_customer(name, email, password, address, contact)
-                    if success:
-                        st.success(f"Registration successful! Your User ID is {result}")
-                    else:
-                        st.error(result)
+                    st.error(result)
 
-    with tab2:
-        with st.form("login_form"):
-            user_id = st.number_input("User ID", min_value=1000000, max_value=9999999, step=1)
-            password = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Login")
+    st.write("")
+    st.write("Login")
+    with st.form("login_form"):
+        user_id = st.text_input("User ID")
+        password = st.text_input("Password")
+        submitted = st.form_submit_button("Login")
 
-            if submitted:
-                customer = login_customer(int(user_id), password)
-                if customer:
-                    st.session_state.customer = customer
-                    st.success("Login successful")
-                    st.rerun()
-                else:
-                    st.error("Invalid credentials")
+        if submitted:
+            customer = login_customer(int(user_id), password)
+            if customer:
+                st.session_state.customer = customer
+                st.success("Login successful")
+                st.rerun()
+            else:
+                st.error("Invalid credentials")
 else:
     customer = st.session_state.customer
     st.success(f"Logged in as {customer['user_name']} (User ID: {customer['user_id']})")
@@ -232,8 +235,8 @@ else:
             )
             amount_map = {"Vendor A": 500, "Vendor B": 700, "Vendor C": 1000}
             col1, col2 = st.columns(2)
-            update_clicked = col1.form_submit_button("Update Booking")
-            delete_clicked = col2.form_submit_button("Delete Booking")
+            update_clicked = col1.form_submit_button("Update")
+            delete_clicked = col2.form_submit_button("Delete")
 
             if update_clicked:
                 if edit_slot.strip():
@@ -245,14 +248,14 @@ else:
                         edit_vendor,
                         amount_map[edit_vendor],
                     )
-                    st.success("Booking updated successfully")
+                    st.success("Booking updated")
                     st.rerun()
                 else:
                     st.warning("Please enter a time slot")
 
             if delete_clicked:
                 delete_booking(selected_booking["booking_id"])
-                st.success("Booking deleted successfully")
+                st.success("Booking deleted")
                 st.rerun()
     else:
         st.info("No bookings yet")
