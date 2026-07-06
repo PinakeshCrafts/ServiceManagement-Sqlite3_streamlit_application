@@ -1,6 +1,6 @@
 import random
 import sqlite3
-from datetime import date
+from datetime import date, datetime
 
 import streamlit as st
 
@@ -99,6 +99,25 @@ def get_booking_history(user_id):
     return [dict(row) for row in rows]
 
 
+def update_booking(booking_id, service_type, booking_date, slot, vendor, amount):
+    with get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE booking
+            SET service_type = ?, booking_date = ?, slot = ?, vendor = ?, amount = ?
+            WHERE booking_id = ?
+            """,
+            (service_type, booking_date, slot, vendor, amount, booking_id),
+        )
+        conn.commit()
+
+
+def delete_booking(booking_id):
+    with get_connection() as conn:
+        conn.execute("DELETE FROM booking WHERE booking_id = ?", (booking_id,))
+        conn.commit()
+
+
 st.set_page_config(page_title="Home Service App", page_icon="🛠️", layout="centered")
 create_tables()
 
@@ -187,5 +206,53 @@ else:
 
     if history:
         st.dataframe(history, use_container_width=True, hide_index=True)
+
+        st.subheader("Manage Bookings")
+        booking_options = {
+            f"{row['booking_id']} - {row['service_type']} ({row['booking_date']})": row for row in history
+        }
+        selected_key = st.selectbox("Select a booking to edit", list(booking_options.keys()))
+        selected_booking = booking_options[selected_key]
+
+        with st.form("edit_booking_form"):
+            edit_service_type = st.selectbox(
+                "Service",
+                ["AC Repair", "TV Repair", "Fridge Repair", "Washing Machine Repair", "Microwave Repair"],
+                index=["AC Repair", "TV Repair", "Fridge Repair", "Washing Machine Repair", "Microwave Repair"].index(selected_booking["service_type"]),
+            )
+            edit_date = st.date_input(
+                "Preferred Date",
+                value=datetime.strptime(selected_booking["booking_date"], "%d-%m-%Y").date(),
+            )
+            edit_slot = st.text_input("Time Slot", value=selected_booking["slot"])
+            edit_vendor = st.selectbox(
+                "Vendor",
+                ["Vendor A", "Vendor B", "Vendor C"],
+                index=["Vendor A", "Vendor B", "Vendor C"].index(selected_booking["vendor"]),
+            )
+            amount_map = {"Vendor A": 500, "Vendor B": 700, "Vendor C": 1000}
+            col1, col2 = st.columns(2)
+            update_clicked = col1.form_submit_button("Update Booking")
+            delete_clicked = col2.form_submit_button("Delete Booking")
+
+            if update_clicked:
+                if edit_slot.strip():
+                    update_booking(
+                        selected_booking["booking_id"],
+                        edit_service_type,
+                        edit_date.strftime("%d-%m-%Y"),
+                        edit_slot.strip(),
+                        edit_vendor,
+                        amount_map[edit_vendor],
+                    )
+                    st.success("Booking updated successfully")
+                    st.rerun()
+                else:
+                    st.warning("Please enter a time slot")
+
+            if delete_clicked:
+                delete_booking(selected_booking["booking_id"])
+                st.success("Booking deleted successfully")
+                st.rerun()
     else:
         st.info("No bookings yet")
