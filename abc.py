@@ -7,12 +7,14 @@ import streamlit as st
 DB_PATH = "service.db"
 
 
+# Connect to the database
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
 
+# Create the tables if they do not exist
 def create_tables():
     with get_connection() as conn:
         conn.execute(
@@ -44,6 +46,7 @@ def create_tables():
         conn.commit()
 
 
+# Register a new customer
 def register_customer(user_name, email, password, address, contact_no):
     user_id = random.randint(1000000, 9999999)
 
@@ -61,6 +64,7 @@ def register_customer(user_name, email, password, address, contact_no):
     return True, user_id
 
 
+# Check login details
 def login_customer(user_id, password):
     with get_connection() as conn:
         row = conn.execute(
@@ -73,6 +77,7 @@ def login_customer(user_id, password):
     return None
 
 
+# Save a new booking
 def book_service(user_id, service_type, booking_date, slot, vendor, amount):
     with get_connection() as conn:
         conn.execute(
@@ -85,6 +90,7 @@ def book_service(user_id, service_type, booking_date, slot, vendor, amount):
         conn.commit()
 
 
+# Get all bookings for one user
 def get_booking_history(user_id):
     with get_connection() as conn:
         rows = conn.execute(
@@ -99,6 +105,7 @@ def get_booking_history(user_id):
     return [dict(row) for row in rows]
 
 
+# Update one booking
 def update_booking(booking_id, service_type, booking_date, slot, vendor, amount):
     with get_connection() as conn:
         conn.execute(
@@ -112,6 +119,7 @@ def update_booking(booking_id, service_type, booking_date, slot, vendor, amount)
         conn.commit()
 
 
+# Delete one booking
 def delete_booking(booking_id):
     with get_connection() as conn:
         conn.execute("DELETE FROM booking WHERE booking_id = ?", (booking_id,))
@@ -124,10 +132,7 @@ create_tables()
 if "customer" not in st.session_state:
     st.session_state.customer = None
 
-st.markdown(
-    "<h1 style='text-align: center; color: #1E40AF; font-weight: 700;'>SERVICE MANAGEMENT SYSTEM</h1>",
-    unsafe_allow_html=True,
-)
+st.title("SERVICE MANAGEMENT SYSTEM")
 
 if st.session_state.customer is None:
     st.subheader("Register or Login")
@@ -160,13 +165,16 @@ if st.session_state.customer is None:
         submitted = st.form_submit_button("Login")
 
         if submitted:
-            customer = login_customer(int(user_id), password)
-            if customer:
-                st.session_state.customer = customer
-                st.success("Login successful")
-                st.rerun()
+            if user_id.strip():
+                customer = login_customer(int(user_id), password)
+                if customer:
+                    st.session_state.customer = customer
+                    st.success("Login successful")
+                    st.rerun()
+                else:
+                    st.error("Invalid credentials")
             else:
-                st.error("Invalid credentials")
+                st.warning("Please enter your user ID")
 else:
     customer = st.session_state.customer
     st.success(f"Logged in as {customer['user_name']} (User ID: {customer['user_id']})")
@@ -211,11 +219,16 @@ else:
         st.dataframe(history, use_container_width=True, hide_index=True)
 
         st.subheader("Manage Bookings")
-        booking_options = {
-            f"{row['booking_id']} - {row['service_type']} ({row['booking_date']})": row for row in history
-        }
-        selected_key = st.selectbox("Select a booking to edit", list(booking_options.keys()))
-        selected_booking = booking_options[selected_key]
+        booking_names = []
+        booking_map = {}
+
+        for row in history:
+            name = f"{row['booking_id']} - {row['service_type']} ({row['booking_date']})"
+            booking_names.append(name)
+            booking_map[name] = row
+
+        selected_name = st.selectbox("Select a booking to edit", booking_names)
+        selected_booking = booking_map[selected_name]
 
         with st.form("edit_booking_form"):
             edit_service_type = st.selectbox(
